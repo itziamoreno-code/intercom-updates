@@ -1028,6 +1028,7 @@ td.key { color: var(--blue); font-weight: 700; }
 </div><!-- end update-screen -->
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const SUPABASE_FN = 'https://thjoxrteqpbusajluyly.supabase.co/functions/v1/intercom-csv';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoam94cnRlcXBidXNhamx1eWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MTUzMzMsImV4cCI6MjA4NzE5MTMzM30.aN8shoCb500y2rlTBdpISf_t8bqLBUI7xNw5k4DL_pI';
 const EXISTING_TAGS={};
 let tagWarnTimer=null;
 function onTagNameInput(val){
@@ -1146,7 +1147,7 @@ async function startTagVerify(){
   document.getElementById('tvBtnExists').style.display='none';
   document.getElementById('tvChecking').style.display='';
   try {
-    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify-tag',tagName:tag})});
+    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'verify-tag',tagName:tag})});
     const data=await res.json();
     document.getElementById('tvChecking').style.display='none';
     if(data.exists){
@@ -1215,7 +1216,7 @@ async function startTagProg(){
     if(v>=66){ps1.classList.add('done');ps2.classList.add('done');ps2.classList.remove('active');ps3.classList.add('active');}
   },80);
   try {
-    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'process-tag',contacts:tagCSVData.rows,tagName:tag})});
+    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-tag',contacts:tagCSVData.rows,tagName:tag})});
     const data=await res.json();
     done=true; clearInterval(iv);
     v=100; pf.style.width=(document.querySelector('#tag-p4 .pill-track').offsetWidth-16)+'px';
@@ -1356,7 +1357,7 @@ async function startProg(){
     if(v>=66){ps1.classList.add('done');ps2.classList.add('done');ps2.classList.remove('active');ps3.classList.add('active');}
   },80);
   try {
-    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'process-update',contacts:updateCSVData.rows,tagName:tag,attrCols:extraCols})});
+    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-update',contacts:updateCSVData.rows,tagName:tag,attrCols:extraCols})});
     const data=await res.json();
     done=true; clearInterval(iv);
     v=100; pf.style.width=(document.querySelector('#p4 .pill-track').offsetWidth-16)+'px';
@@ -1397,7 +1398,7 @@ async function startVerify(){
   document.getElementById('uvBtnExists').style.display='none';
   document.getElementById('uvChecking').style.display='';
   try {
-    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify-tag',tagName:tag})});
+    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'verify-tag',tagName:tag})});
     const data=await res.json();
     document.getElementById('uvChecking').style.display='none';
     if(data.exists){
