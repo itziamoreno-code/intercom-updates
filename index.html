@@ -1274,7 +1274,7 @@ function goTo(n){
     const tagInput=document.getElementById('updateTagName');
     tagInput.readOnly=true; tagInput.style.opacity='0.6'; tagInput.style.cursor='default';
     if(updateCSVData){
-      const extraCols=updateCSVData.headers.filter(h=>h!=='user_id'&&h!=='email'&&h!=='person_tag');
+      const extraCols=updateCSVData.headers.filter(h=>h!=='user_id'&&h!=='email'&&h!=='person_tag'&&h!=='name'&&h!=='company_name');
       const allCols=[...extraCols,'person_tag'];
       document.querySelector('#p2 .preview-chips').innerHTML=
         `<div class="chip teal"><div class="dot"></div>${updateCSVData.rows.length.toLocaleString()} registros</div>`
@@ -1336,7 +1336,7 @@ function getLogs(){
 async function startProg(){
   const tag=(document.getElementById('updateTagName').value||'').trim();
   const total=updateCSVData?updateCSVData.rows.length:0;
-  const extraCols=updateCSVData?updateCSVData.headers.filter(h=>h!=='user_id'&&h!=='email'&&h!=='person_tag'):[];
+  const extraCols=updateCSVData?updateCSVData.headers.filter(h=>h!=='user_id'&&h!=='email'&&h!=='person_tag'&&h!=='name'&&h!=='company_name'):[];
   document.getElementById('pTotal').textContent=total.toLocaleString();
   let v=0,done=false;
   const pf=document.getElementById('pf'),pn=document.getElementById('pn'),
