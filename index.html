@@ -1195,39 +1195,56 @@ function getTagLogs(){
 }
 async function startTagProg(){
   const tag=(document.getElementById('tagName').value||'').trim();
-  const total=tagCSVData?tagCSVData.rows.length:0;
+  const allContacts=tagCSVData?tagCSVData.rows:[];
+  const total=allContacts.length;
   document.getElementById('tpTotal').textContent=total.toLocaleString();
-  let v=0,done=false;
   const pf=document.getElementById('tpf'),pn=document.getElementById('tpn'),
         pl=document.getElementById('tpl'),pp=document.getElementById('tpp'),
         lb=document.getElementById('tlb');
   const ps1=document.getElementById('tps1'),ps2=document.getElementById('tps2'),ps3=document.getElementById('tps3');
   lb.innerHTML='<div class="info">→ Conectando con Supabase...</div>';
   ps1.classList.add('active'); ps2.classList.remove('active','done'); ps3.classList.remove('active','done');
-  const iv=setInterval(()=>{
-    if(done) return;
-    if(v<90) v+=1;
-    const c=Math.round(v/100*total);
+  function setTagPct(pct){
     const trackW=document.querySelector('#tag-p4 .pill-track').offsetWidth-16;
-    pf.style.width=Math.max(52,(v/100)*trackW)+'px';
-    pn.textContent=c.toLocaleString(); pp.textContent=v+'%';
-    pl.textContent=v<90?'Aplicando tag...':'Finalizando...';
-    if(v>=33&&v<66){ps1.classList.add('done');ps2.classList.add('active');ps3.classList.remove('active');}
-    if(v>=66){ps1.classList.add('done');ps2.classList.add('done');ps2.classList.remove('active');ps3.classList.add('active');}
-  },80);
+    pf.style.width=Math.max(52,(pct/100)*trackW)+'px';
+    pp.textContent=pct+'%'; pn.textContent=Math.round(pct/100*total).toLocaleString();
+    if(pct>=33&&pct<66){ps1.classList.add('done');ps2.classList.add('active');ps3.classList.remove('active');}
+    if(pct>=66){ps1.classList.add('done');ps2.classList.add('done');ps2.classList.remove('active');ps3.classList.add('active');}
+  }
+  const BATCH=250;
+  const batches=[];
+  for(let i=0;i<allContacts.length;i+=BATCH) batches.push(allContacts.slice(i,i+BATCH));
+  let applied=0,notFound=0,errors=0,appliedList=[],notFoundList=[],errorsList=[];
   try {
-    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-tag',contacts:tagCSVData.rows,tagName:tag})});
-    const data=await res.json();
-    done=true; clearInterval(iv);
-    v=100; pf.style.width=(document.querySelector('#tag-p4 .pill-track').offsetWidth-16)+'px';
+    for(let i=0;i<batches.length;i++){
+      setTagPct(Math.round((i/batches.length)*100));
+      pl.textContent=batches.length>1?`Lote ${i+1} de ${batches.length}...`:'Aplicando tag...';
+      let res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-tag',contacts:batches[i],tagName:tag})});
+      if(res.status===429){
+        const w=document.createElement('div');w.className='warn';w.textContent='⚠ Rate limit — esperando 65s...';lb.appendChild(w);lb.scrollTop=lb.scrollHeight;
+        await new Promise(r=>setTimeout(r,65000));
+        res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-tag',contacts:batches[i],tagName:tag})});
+      }
+      if(!res.ok) throw new Error(`HTTP ${res.status} en lote ${i+1}`);
+      const data=await res.json();
+      applied+=(data.applied||0); notFound+=(data.notFound||0); errors+=(data.errors||0);
+      appliedList=[...appliedList,...(data.appliedList||[])];
+      notFoundList=[...notFoundList,...(data.notFoundList||[])];
+      errorsList=[...errorsList,...(data.errorsList||[])];
+      const d=document.createElement('div');d.className='ok';
+      d.textContent=`✓ Lote ${i+1}/${batches.length} — ${data.applied||0} aplicados · ${data.notFound||0} no encontrados`;
+      lb.appendChild(d);lb.scrollTop=lb.scrollHeight;
+    }
+    setTagPct(100);
+    pf.style.width=(document.querySelector('#tag-p4 .pill-track').offsetWidth-16)+'px';
     pn.textContent=total.toLocaleString(); pp.textContent='100%'; pl.textContent='¡Completado!';
     ps3.classList.add('done');
+    const result={applied,notFound,errors,appliedList,notFoundList,errorsList};
     const d=document.createElement('div');d.className='ok';
-    d.textContent=`✓ ${data.applied} aplicados · ${data.notFound} no encontrados · ${data.errors} errores`;
-    lb.appendChild(d); lb.scrollTop=lb.scrollHeight;
-    setTimeout(()=>tagGoTo(5),700); buildTagReport(data);
+    d.textContent=`✓ ${applied} aplicados · ${notFound} no encontrados · ${errors} errores`;
+    lb.appendChild(d);lb.scrollTop=lb.scrollHeight;
+    setTimeout(()=>tagGoTo(5),700); buildTagReport(result);
   } catch(e){
-    done=true; clearInterval(iv);
     const d=document.createElement('div');d.className='err';d.textContent='✗ Error: '+e.message;
     lb.appendChild(d); pl.textContent='Error de conexión';
   }
@@ -1335,40 +1352,57 @@ function getLogs(){
 }
 async function startProg(){
   const tag=(document.getElementById('updateTagName').value||'').trim();
-  const total=updateCSVData?updateCSVData.rows.length:0;
+  const allContacts=updateCSVData?updateCSVData.rows:[];
+  const total=allContacts.length;
   const extraCols=updateCSVData?updateCSVData.headers.filter(h=>h!=='user_id'&&h!=='email'&&h!=='person_tag'&&h!=='name'&&h!=='company_name'):[];
   document.getElementById('pTotal').textContent=total.toLocaleString();
-  let v=0,done=false;
   const pf=document.getElementById('pf'),pn=document.getElementById('pn'),
         pl=document.getElementById('pl'),pp=document.getElementById('pp'),
         lb=document.getElementById('lb');
   const ps1=document.getElementById('ps1'),ps2=document.getElementById('ps2'),ps3=document.getElementById('ps3');
   lb.innerHTML='<div class="info">→ Conectando con Supabase...</div>';
   ps1.classList.add('active'); ps2.classList.remove('active','done'); ps3.classList.remove('active','done');
-  const iv=setInterval(()=>{
-    if(done) return;
-    if(v<90) v+=1;
-    const c=Math.round(v/100*total);
+  function setUpdPct(pct){
     const trackW=document.querySelector('#p4 .pill-track').offsetWidth-16;
-    pf.style.width=Math.max(52,(v/100)*trackW)+'px';
-    pn.textContent=c.toLocaleString(); pp.textContent=v+'%';
-    pl.textContent=v<90?'Procesando registros...':'Finalizando...';
-    if(v>=33&&v<66){ps1.classList.add('done');ps2.classList.add('active');ps3.classList.remove('active');}
-    if(v>=66){ps1.classList.add('done');ps2.classList.add('done');ps2.classList.remove('active');ps3.classList.add('active');}
-  },80);
+    pf.style.width=Math.max(52,(pct/100)*trackW)+'px';
+    pp.textContent=pct+'%'; pn.textContent=Math.round(pct/100*total).toLocaleString();
+    if(pct>=33&&pct<66){ps1.classList.add('done');ps2.classList.add('active');ps3.classList.remove('active');}
+    if(pct>=66){ps1.classList.add('done');ps2.classList.add('done');ps2.classList.remove('active');ps3.classList.add('active');}
+  }
+  const BATCH=250;
+  const batches=[];
+  for(let i=0;i<allContacts.length;i+=BATCH) batches.push(allContacts.slice(i,i+BATCH));
+  let updated=0,notFound=0,errors=0,updatedList=[],notFoundList=[],errorsList=[];
   try {
-    const res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-update',contacts:updateCSVData.rows,tagName:tag,attrCols:extraCols})});
-    const data=await res.json();
-    done=true; clearInterval(iv);
-    v=100; pf.style.width=(document.querySelector('#p4 .pill-track').offsetWidth-16)+'px';
+    for(let i=0;i<batches.length;i++){
+      setUpdPct(Math.round((i/batches.length)*100));
+      pl.textContent=batches.length>1?`Lote ${i+1} de ${batches.length}...`:'Procesando registros...';
+      let res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-update',contacts:batches[i],tagName:tag,attrCols:extraCols})});
+      if(res.status===429){
+        const w=document.createElement('div');w.className='warn';w.textContent='⚠ Rate limit — esperando 65s...';lb.appendChild(w);lb.scrollTop=lb.scrollHeight;
+        await new Promise(r=>setTimeout(r,65000));
+        res=await fetch(SUPABASE_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON},body:JSON.stringify({action:'process-update',contacts:batches[i],tagName:tag,attrCols:extraCols})});
+      }
+      if(!res.ok) throw new Error(`HTTP ${res.status} en lote ${i+1}`);
+      const data=await res.json();
+      updated+=(data.updated||0); notFound+=(data.notFound||0); errors+=(data.errors||0);
+      updatedList=[...updatedList,...(data.updatedList||[])];
+      notFoundList=[...notFoundList,...(data.notFoundList||[])];
+      errorsList=[...errorsList,...(data.errorsList||[])];
+      const d=document.createElement('div');d.className='ok';
+      d.textContent=`✓ Lote ${i+1}/${batches.length} — ${data.updated||0} actualizados · ${data.notFound||0} no encontrados`;
+      lb.appendChild(d);lb.scrollTop=lb.scrollHeight;
+    }
+    setUpdPct(100);
+    pf.style.width=(document.querySelector('#p4 .pill-track').offsetWidth-16)+'px';
     pn.textContent=total.toLocaleString(); pp.textContent='100%'; pl.textContent='¡Completado!';
     ps3.classList.add('done');
+    const result={updated,notFound,errors,updatedList,notFoundList,errorsList};
     const d=document.createElement('div');d.className='ok';
-    d.textContent=`✓ ${data.updated} actualizados · ${data.notFound} no encontrados · ${data.errors} errores`;
-    lb.appendChild(d); lb.scrollTop=lb.scrollHeight;
-    buildUpdateReport(data); setTimeout(()=>goTo(5),700);
+    d.textContent=`✓ ${updated} actualizados · ${notFound} no encontrados · ${errors} errores`;
+    lb.appendChild(d);lb.scrollTop=lb.scrollHeight;
+    buildUpdateReport(result); setTimeout(()=>goTo(5),700);
   } catch(e){
-    done=true; clearInterval(iv);
     const d=document.createElement('div');d.className='err';d.textContent='✗ Error: '+e.message;
     lb.appendChild(d); pl.textContent='Error de conexión';
   }
